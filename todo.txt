@@ -1,0 +1,6 @@
+Todo:
+- favorite button and filtering
+- tag saving on change
+- fix height of top bar
+- add batch tagging
+- add autotagger
