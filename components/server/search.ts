@@ -22,7 +22,7 @@ const sortResults = async (images: [string, ImageItem][], method: string, lastVi
     return completeImagesFiltered;
 }
 
-export async function getMatchingImages(query:string, aliasStrength:number, favorites:string[]): Promise<ImageItem[]> {
+export async function getMatchingImages(query:string, aliasStrength:number, favorites:Record<string, boolean>): Promise<ImageItem[]> {
     //gets all images from the DB matching the query
     const imageDB = await getImageDatabase();
     const lastViewedSet = await getLastViewedSet();
@@ -87,7 +87,7 @@ export async function getMatchingImages(query:string, aliasStrength:number, favo
     return matchingImages.map(([src, item]) => ({ ...item })); // Convert to ImageItem objects assuming ImageItem has key and image properties
 }
 
-function matchAlgorithm(src: string, tags: string, term: string, favorites: string[]): boolean {
+function matchAlgorithm(src: string, tags: string, term: string, favorites: Record<string, boolean>): boolean {
     if (term.startsWith('folder:') && !term.startsWith('folder:"')){
         const folderName = term.slice('folder:'.length);
         return src.includes(folderName);
@@ -105,15 +105,30 @@ function matchAlgorithm(src: string, tags: string, term: string, favorites: stri
     }
 
     if (term === "special:notag"){
-        return tags.split(" ").length === 0;
+        return tags.split(" ").length < 2;
     }
 
     if (term === "special:tagged"){
         return tags.split(" ").length > 0;
     }
 
-    if (term === "special:favorite") {
-        return favorites.includes(src);
+    if (term === "special:starred") {
+        return !!favorites[src];
+    }
+
+    if (term === "special:ai" || term === "special:AI"){
+        //AI generated files start with the pattern 00102-3496835251 (xxxxx- etc)
+        //they may continue after the initial pattern
+        //get the last part after all slashes
+        const tmpSrc = src.split("/").pop() ?? src;
+        const dashSplit = tmpSrc.split("-");
+        if (dashSplit.length < 2) return false;
+
+        const firstPart = dashSplit[0];
+        if (firstPart.length !== 5) return false;
+        const secondPart = dashSplit[1];
+        if (secondPart.length !== 10) return false;
+        return true
     }
 
     // Default behavior: check if the term exists as a tag in the key

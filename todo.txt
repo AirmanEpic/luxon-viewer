@@ -1,6 +1,8 @@
 Todo:
-- favorite button and filtering
-- tag saving on change
-- fix height of top bar
+- pan and zoom
 - add batch tagging
 - add autotagger
+
+
+Bugs:
+- on search/initial render from search, star isn't rendered

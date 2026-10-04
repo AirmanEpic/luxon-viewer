@@ -195,3 +195,17 @@ async function attemptToFixFilePath(filePath: string): Promise<string> {
 	}
 	return filePath;
 }
+
+export async function loadFavorites() {
+	const favorites = await createOrReadFile<Record<string, boolean>>("favorites.json", {});
+	return favorites;
+}
+
+export async function wipeFavorites(){
+	const favorites: Record<string, boolean> = {};
+	await writeFile("favorites.json", JSON.stringify(favorites, null, 2));
+}
+
+export async function saveFavoriteStatus(favorites: Record<string, boolean>) {
+	await writeFile("favorites.json", JSON.stringify(favorites, null, 2));
+}

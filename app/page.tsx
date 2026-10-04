@@ -15,7 +15,7 @@ import {
 import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { createOrLoadConfig, createOrLoadTagDatabase, getRecentItems, processImageDB, processLegacyImageDB, targetImageFolder, viewImage } from "@/components/server/imagedb";
+import { createOrLoadConfig, createOrLoadTagDatabase, getRecentItems, processImageDB, processLegacyImageDB, saveFavoriteStatus, saveImageTags, targetImageFolder, viewImage, wipeFavorites } from "@/components/server/imagedb";
 import { getMatchingImages } from "@/components/server/search";
 import { HelpModal } from "@/components/ui/helpModal";
 import { ModalBack } from "@/components/ui/modal";
@@ -27,7 +27,7 @@ function TagPill({ tag, removable, onRemove }: { tag: Tag; removable?: boolean; 
 		<span className="glass-panel inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs text-foreground">
 			<span className={`size-2 rounded-full`} style={{ backgroundColor: tag.color }} />
 			{tag.name}
-			<span className="font-mono text-[10px] text-muted-foreground">{tag.count.toLocaleString()}</span>
+			<span className="font-mono text-[10px] text-muted-foreground mt-[2.4px]">{tag.count.toLocaleString()}</span>
 			{removable && (
 				<button aria-label={`Remove ${tag.name}`} className="ml-0.5 text-muted-foreground hover:text-foreground" onClick={onRemove}>
 					<X className="size-3" />
@@ -53,10 +53,16 @@ export default function Index() {
 	const searchRef = useRef<HTMLInputElement>(null);
 	const [tagDB, setTagDB] = useState<Tag[]>([]);
 	const [images, setImages] = useState<ImageItem[]>([]);
+	const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
+	const dragRef = useRef<{ px: number; py: number; moved: boolean } | null>(null);
+	const viewedSrc = (images[imageIndex] ?? images[0])?.src;
+	useEffect(() => {
+		setView({ scale: 1, x: 0, y: 0 });
+	}, [viewedSrc]);
 	const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
 	const [masterLoading, setMasterLoading] = useState(true);
 	const [helpModalOpen, setHelpModalOpen] = useState(false);
-	const [favorites, setFavorites] = useState<string[]>([]);
+	const [favorites, setFavorites] = useState<Record<string, boolean>>({});
 
 	const tagDBAsMap = tagDB.reduce((map, tag) => {
 		map[tag.name] = tag;
@@ -64,6 +70,14 @@ export default function Index() {
 	}, {} as Record<string, Tag>);
 
 	const goToImage = (direction: number) => {
+		//save the current image's tags before navigating away
+		const currentImage = images[imageIndex];
+		if (currentImage) {
+			currentImage.tags = currentTags;
+			saveImageTags(currentImage.src, currentTags);
+		}
+		
+
 		const next = (imageIndex + direction + images.length) % images.length;
 		const nextImage = images[next] ?? images[0];
 		if (!nextImage) return;
@@ -71,9 +85,9 @@ export default function Index() {
 		// Assuming the value in ImageDB is a string (e.g., image URL or path)
 		setCurrentTags(nextImage.tags);
 		setTagText(nextImage.tags.join(", "));
-		setFavorite(favorites.includes(nextImage.src));
+		setFavorite(!!favorites[nextImage.src]);
 		setStatus(`${next + 1} of ${images.length}`);
-
+		console.log("favorites: ", favorites);
 		viewImage(nextImage);
 	};
 
@@ -108,6 +122,14 @@ export default function Index() {
 	};
 
 	useEffect(() => {
+		//wipe favorites on initial load
+		const wipeFavoritesOnLoad = async () => {
+			await wipeFavorites();
+			console.log("Wiping favorites on initial load");
+			setFavorites({});
+		};
+		wipeFavoritesOnLoad();
+
 		// trigger an initial db run to process images that may be new since the last run
 		const processInitialDB = async () => {
 			await processImageDB();
@@ -139,6 +161,15 @@ export default function Index() {
 		setMasterLoading(false);
 	}, []);
 
+	// Sync editor state with the first image whenever a new image list is loaded
+	useEffect(() => {
+		const first = images[0];
+		if (!first) return;
+		setCurrentTags(first.tags);
+		setTagText(first.tags.join(", "));
+		setFavorite(!!favorites[first.src]);
+	}, [images]);
+
 	const applyTagText = () => {
 		const parsed = tagText.split(",").map((tag) => tag.trim()).filter(Boolean);
 		setCurrentTags(parsed);
@@ -164,7 +195,7 @@ export default function Index() {
 				</ModalBack>
 			)}
 			<header className="specular relative z-30 shrink-0 border-b border-border/70 bg-surface/95">
-				<div className="flex h-[74px] items-center gap-3 px-4">
+				<div className="flex h-[100px] items-center gap-3 px-4">
 					<div className="hidden shrink-0 items-center gap-2.5 border-r border-border/70 pr-4 lg:flex">
 						<div className="glass-panel grid size-8 place-items-center rounded-lg font-display text-sm font-bold text-primary">L</div>
 						<div className="leading-none">
@@ -203,7 +234,7 @@ export default function Index() {
 								{searchOpen && (
 									<div className="deep-panel absolute left-0 right-0 top-11 z-50 rounded-lg p-1.5 shadow-2xl">
 										<div className="px-2 py-1 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Suggested</div>
-										{tagDB.filter(tag => tag.name.toLowerCase().startsWith(query.split(" ").at(-1)?.toLowerCase() ?? "")).map((tag) => (
+										{tagDB.filter(tag => tag.name.toLowerCase().startsWith(query.split(" ").at(-1)?.toLowerCase() ?? "")).slice(0, 10).map((tag) => (
 											<Button key={tag.name}
 												onClick={() => selectSearch(tag.name)}
 												onMouseDown={(event) => event.preventDefault()}
@@ -334,14 +365,54 @@ export default function Index() {
 			</header>
 
 			<main className="relative flex min-h-0 flex-1 items-center justify-center bg-background p-3 sm:p-6">
-				<div className="relative h-full w-full max-w-6xl overflow-hidden rounded-xl border border-border/70 bg-surface shadow-2xl">
+				<div
+					className={"relative h-full w-full max-w-6xl overflow-hidden rounded-xl border border-border/70 bg-surface shadow-2xl " + (view.scale > 1 ? "cursor-grab active:cursor-grabbing" : "")}
+					onWheel={(e) => {
+						const rect = e.currentTarget.getBoundingClientRect();
+						const cx = e.clientX - rect.left - rect.width / 2;
+						const cy = e.clientY - rect.top - rect.height / 2;
+						const factor = Math.exp(-e.deltaY * 0.0015);
+						setView((v) => {
+							const scale = Math.min(20, Math.max(1, v.scale * factor));
+							if (scale === 1) return { scale: 1, x: 0, y: 0 };
+							const ratio = scale / v.scale;
+							return { scale, x: cx - (cx - v.x) * ratio, y: cy - (cy - v.y) * ratio };
+						});
+					}}
+					onPointerDown={(e) => {
+						if (e.button !== 0) return;
+						dragRef.current = { px: e.clientX, py: e.clientY, moved: false };
+					}}
+					onPointerMove={(e) => {
+						const d = dragRef.current;
+						if (!d) return;
+						const dx = e.clientX - d.px;
+						const dy = e.clientY - d.py;
+						if (!d.moved && Math.hypot(dx, dy) < 4) return;
+						if (!d.moved) e.currentTarget.setPointerCapture(e.pointerId);
+						d.moved = true;
+						d.px = e.clientX;
+						d.py = e.clientY;
+						setView((v) => (v.scale > 1 ? { ...v, x: v.x + dx, y: v.y + dy } : v));
+					}}
+					onPointerUp={(e) => {
+						if (dragRef.current?.moved && e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+						dragRef.current = null;
+					}}
+					onPointerCancel={() => {
+						dragRef.current = null;
+					}}
+					onDoubleClick={() => setView({ scale: 1, x: 0, y: 0 })}
+				>
 					{currentImage && (
 						<img
 							key={currentImage.src}
 							src={isTauri() ? convertFileSrc(currentImage.src) : currentImage.src}
 							width={1600}
 							height={1000}
-							className="h-full w-full object-contain animate-in fade-in duration-300"
+							draggable={false}
+							style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}
+							className="h-full w-full select-none object-contain animate-in fade-in duration-300"
 						/>
 					)}
 					<div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-background/20 via-transparent to-foreground/5" />
@@ -420,11 +491,14 @@ export default function Index() {
 							onClick={() => {
 								setFavorite(!favorite);
 								setStatus(favorite ? "Removed from favorites" : "Added to favorites");
+								const newFavorites = { ...favorites, [currentImage.src]: !favorite };
+								saveFavoriteStatus(newFavorites);
+								setFavorites(newFavorites);
 							}}
 							className="h-11 shrink-0 px-4"
 						>
 							{favorite ? <Star className="size-4 fill-current" /> : <Heart className="size-4" />}
-							<span className="hidden sm:inline">{favorite ? "Favorited" : "Favorite"}</span>
+							<span className="hidden sm:inline">{favorite ? "Starred" : "Star"}</span>
 						</Button>
 					</div>
 				) : (
