@@ -21,8 +21,9 @@ import { HelpModal } from "@/components/ui/helpModal";
 import { ModalBack } from "@/components/ui/modal";
 import { handleOpenFolder } from "@/components/Tauri/handleOpenFolder";
 import { handleOpenFile } from "@/components/Tauri/handleOpenFile";
+import { BatchTagInterface } from "@/components/ui/batchTaggerInterface";
 
-function TagPill({ tag, removable, onRemove }: { tag: Tag; removable?: boolean; onRemove?: () => void }) {
+export function TagPill({ tag, removable, onRemove }: { tag: Tag; removable?: boolean; onRemove?: () => void }) {
 	return (
 		<span className="glass-panel inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs text-foreground">
 			<span className={`size-2 rounded-full`} style={{ backgroundColor: tag.color }} />
@@ -62,6 +63,7 @@ export default function Index() {
 	const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
 	const [masterLoading, setMasterLoading] = useState(true);
 	const [helpModalOpen, setHelpModalOpen] = useState(false);
+	const [batchTagInterfaceOpen, setBatchTagInterfaceOpen] = useState<"autotagger"|"bulkTagger"|null>(null);
 	const [favorites, setFavorites] = useState<Record<string, boolean>>({});
 
 	const tagDBAsMap = tagDB.reduce((map, tag) => {
@@ -192,6 +194,11 @@ export default function Index() {
 			{helpModalOpen && (
 				<ModalBack onClose={() => setHelpModalOpen(false)}>
 					<HelpModal setHelpModalOpen={setHelpModalOpen}></HelpModal>
+				</ModalBack>
+			)}
+			{batchTagInterfaceOpen && (
+				<ModalBack onClose={() => setBatchTagInterfaceOpen(null)}>
+					<BatchTagInterface type={batchTagInterfaceOpen} onClose={() => setBatchTagInterfaceOpen(null)} tags={batchTags} selection={images} />
 				</ModalBack>
 			)}
 			<header className="specular relative z-30 shrink-0 border-b border-border/70 bg-surface/95">
@@ -520,12 +527,12 @@ export default function Index() {
 							</div>
 						</div>
 						<Button variant="primary" disabled={!batchTags.trim()} onClick={() => {
-							setStatus(`Applied tags.`);
-							setBatchTags(""); }}
+							setBatchTagInterfaceOpen("bulkTagger");
+						}}
 							className="h-11 px-4">
-								Apply tags
+								Batch tag
 						</Button>
-						<Button variant="glass" onClick={() => setStatus("Autotagging...")} className="h-11 px-4">
+						<Button variant="glass" onClick={() => setBatchTagInterfaceOpen("autotagger")} className="h-11 px-4">
 							<Sparkles className="size-4" /><span className="hidden sm:inline">Autotag</span>
 						</Button>
 						

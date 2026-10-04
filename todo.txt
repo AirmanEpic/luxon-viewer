@@ -1,7 +1,7 @@
 Todo:
-- pan and zoom
 - add batch tagging
 - add autotagger
+- recent search menu
 
 
 Bugs:
