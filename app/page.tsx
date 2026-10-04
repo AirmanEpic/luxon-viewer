@@ -364,17 +364,16 @@ export default function Index() {
 				</div>
 			</header>
 
-			<main className="relative flex min-h-0 flex-1 items-center justify-center bg-background p-3 sm:p-6">
+			<main className="relative flex min-h-0 flex-1 items-center justify-center bg-background py-3 sm:py-6">
 				<div
-					className={"relative h-full w-full max-w-6xl overflow-hidden rounded-xl border border-border/70 bg-surface shadow-2xl " + (view.scale > 1 ? "cursor-grab active:cursor-grabbing" : "")}
+					className={"relative flex h-full w-full items-center justify-center overflow-hidden border-y border-border/70 bg-surface shadow-2xl " + "cursor-grab touch-none select-none active:cursor-grabbing"}
 					onWheel={(e) => {
 						const rect = e.currentTarget.getBoundingClientRect();
 						const cx = e.clientX - rect.left - rect.width / 2;
 						const cy = e.clientY - rect.top - rect.height / 2;
 						const factor = Math.exp(-e.deltaY * 0.0015);
 						setView((v) => {
-							const scale = Math.min(20, Math.max(1, v.scale * factor));
-							if (scale === 1) return { scale: 1, x: 0, y: 0 };
+							const scale = Math.min(20, Math.max(0.1, v.scale * factor));
 							const ratio = scale / v.scale;
 							return { scale, x: cx - (cx - v.x) * ratio, y: cy - (cy - v.y) * ratio };
 						});
@@ -393,7 +392,7 @@ export default function Index() {
 						d.moved = true;
 						d.px = e.clientX;
 						d.py = e.clientY;
-						setView((v) => (v.scale > 1 ? { ...v, x: v.x + dx, y: v.y + dy } : v));
+						setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
 					}}
 					onPointerUp={(e) => {
 						if (dragRef.current?.moved && e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
@@ -412,7 +411,7 @@ export default function Index() {
 							height={1000}
 							draggable={false}
 							style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}
-							className="h-full w-full select-none object-contain animate-in fade-in duration-300"
+							className="h-full w-full select-none object-contain"
 						/>
 					)}
 					<div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-background/20 via-transparent to-foreground/5" />
