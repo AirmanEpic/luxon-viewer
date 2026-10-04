@@ -15,7 +15,7 @@ import {
 import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { createOrLoadConfig, createOrLoadTagDatabase, getRecentItems, processImageDB, processLegacyImageDB, saveFavoriteStatus, saveImageTags, targetAutotaggerLocation, targetImageFolder, viewImage, wipeFavorites } from "@/components/server/imagedb";
+import { createOrLoadConfig, createOrLoadTagDatabase, getRecentItems, processImageDB, processLegacyImageDB, saveFavoriteStatus, saveImageTags, setAutotaggerPort, targetAutotaggerLocation, targetImageFolder, viewImage, wipeFavorites } from "@/components/server/imagedb";
 import { getMatchingImages } from "@/components/server/search";
 import { HelpModal } from "@/components/ui/helpModal";
 import { ModalBack } from "@/components/ui/modal";
@@ -52,10 +52,20 @@ export default function Index() {
 	const [batchTags, setBatchTags] = useState("");
 	const [status, setStatus] = useState("Ready");
 	const searchRef = useRef<HTMLInputElement>(null);
+	const [debouncedQuery, setDebouncedQuery] = useState("");
+	useEffect(() => {
+		const timer = setTimeout(() => setDebouncedQuery(query), 250);
+		return () => clearTimeout(timer);
+	}, [query]);
 	const [tagDB, setTagDB] = useState<Tag[]>([]);
 	const [images, setImages] = useState<ImageItem[]>([]);
 	const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
 	const dragRef = useRef<{ px: number; py: number; moved: boolean } | null>(null);
+	const suggestions = useMemo(() => {
+		const prefix = debouncedQuery.split(" ").at(-1)?.toLowerCase() ?? "";
+		return tagDB.filter(tag => tag.name.toLowerCase().startsWith(prefix)).slice(0, 10);
+	}, [tagDB, debouncedQuery]);
+	const tagPills = useMemo(() => tagDB.map((tag) => <TagPill key={tag.name} tag={tag} />), [tagDB]);
 	const viewedSrc = (images[imageIndex] ?? images[0])?.src;
 	useEffect(() => {
 		setView({ scale: 1, x: 0, y: 0 });
@@ -197,7 +207,11 @@ export default function Index() {
 				</ModalBack>
 			)}
 			{batchTagInterfaceOpen && (
-				<ModalBack onClose={() => setBatchTagInterfaceOpen(null)}>
+				<ModalBack onClose={async () => {
+					setBatchTagInterfaceOpen(null)
+					//re-get the image database to reflect any changes made in the batch tag interface
+					await submitSearch(query);
+				}}>
 					<BatchTagInterface type={batchTagInterfaceOpen} onClose={() => setBatchTagInterfaceOpen(null)} tags={batchTags} selection={images} />
 				</ModalBack>
 			)}
@@ -241,7 +255,7 @@ export default function Index() {
 								{searchOpen && (
 									<div className="deep-panel absolute left-0 right-0 top-11 z-50 rounded-lg p-1.5 shadow-2xl">
 										<div className="px-2 py-1 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Suggested</div>
-										{tagDB.filter(tag => tag.name.toLowerCase().startsWith(query.split(" ").at(-1)?.toLowerCase() ?? "")).slice(0, 10).map((tag) => (
+										{suggestions.map((tag) => (
 											<Button key={tag.name}
 												onClick={() => selectSearch(tag.name)}
 												onMouseDown={(event) => event.preventDefault()}
@@ -274,7 +288,7 @@ export default function Index() {
 						</div>
 						<div className="scrollbar-thin mt-2 flex items-center gap-2 overflow-x-auto pb-1">
 							<span className="shrink-0 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Tags</span>
-							{tagDB.map((tag) => <TagPill key={tag.name} tag={tag} />)}
+							{tagPills}
 						</div>
 					</div>
 
@@ -365,18 +379,35 @@ export default function Index() {
 								>
 									Load legacy Img DB
 								</Button>
-								<Button
-									variant="glass"
-									onClick={async ()=>{
-										const folder = await handleOpenFile([{extensions: ["exe"] }]);
-										if (folder) {
-											await targetAutotaggerLocation(folder);
-										}
-									}}
-									className="mt-3 w-full"
-								>
-									Locate autotagger executable
-								</Button>
+								<div className="flex justify-between">
+									<Button
+										variant="glass"
+										onClick={async ()=>{
+											const folder = await handleOpenFile([{extensions: ["exe"] }]);
+											if (folder) {
+												await targetAutotaggerLocation(folder);
+											}
+										}}
+										style={{fontSize:"0.55rem"}}
+										className="mt-3 w-1/2"
+									>
+										Locate autotagger executable
+									</Button>
+									<Button
+										variant="glass"
+										onClick={async ()=>{
+											//pop up a message asking for the autotagger port
+											const port = prompt("Enter the autotagger service port:");
+											if (port) {
+												await setAutotaggerPort(port);
+											}
+										}}
+										style={{fontSize:"0.65rem"}}
+										className="mt-3 w-1/2"
+									>
+										Use autotagger service
+									</Button>
+								</div>
 							</div>
 						)}
 					</div>

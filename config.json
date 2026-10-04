@@ -1,3 +1,4 @@
 {
-  "imageFolder": "D:\\Docs\\Portfolio_2\\Inspiration\\Charecters"
+  "imageFolder": "D:\\Docs\\Portfolio_2\\Inspiration\\Charecters",
+  "autotaggerLocation": "PORT:8080"
 }

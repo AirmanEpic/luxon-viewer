@@ -47,7 +47,9 @@ export function BatchTagInterface(
             await saveImageTags(item.src, newTags);
         } : async (item: ImageItem) => {
             // Auto tagging logic for the individual image
-            await autoTagImage(item);
+            const newTags = await autoTagImage(item);
+            console.log("New tags: ", newTags, "for item: ", item.src );
+            await saveImageTags(item.src, newTags);
         };
 
         // Execute the individual action for each selected image

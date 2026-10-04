@@ -13,11 +13,13 @@ export async function createOrLoadTagDatabase(): Promise<Tag[]> {
 
 export async function saveImageTags(image: string, tags: string[]): Promise<void> {
 	const imageDB: ImageDB = await getImageDatabase();
+	const wasInDB = image in imageDB;
 	if (!(image in imageDB)) {
 		const stats = await fs.stat(image);
 		imageDB[image] = { src: image, tags: [], createTime: stats.birthtimeMs, size: stats.size };
 	}
 	imageDB[image].tags = tags;
+	console.log("Saved tags for image:", image, "Tags:", tags, "Was in DB:", wasInDB);
 	await saveImageDatabase(imageDB);
 }
 
@@ -127,6 +129,13 @@ export async function targetAutotaggerLocation(location: string): Promise<void> 
 	//sets the target autotagger location for the application
 	const config = await createOrLoadConfig();
 	config.autotaggerLocation = location;
+	await writeFile("config.json", config);
+}
+
+export async function setAutotaggerPort(port: string): Promise<void> {
+	//sets the autotagger service port in the config
+	const config = await createOrLoadConfig();
+	config.autotaggerLocation = "PORT:" + port;
 	await writeFile("config.json", config);
 }
 

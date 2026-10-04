@@ -117,8 +117,8 @@ function matchAlgorithm(src: string, tags: string, term: string, favorites: Reco
     }
 
     if (term === "special:ai" || term === "special:AI"){
-        //AI generated files start with the pattern 00102-3496835251 (xxxxx- etc)
-        //they may continue after the initial pattern
+        //AI generated files start with the pattern 00102-3496835251 (xxxxx- etc) 00534-64168567
+        //they may continue after the initial pattern 
         //get the last part after all slashes
         const tmpSrc = src.split("/").pop() ?? src;
         const dashSplit = tmpSrc.split("-");
@@ -127,7 +127,8 @@ function matchAlgorithm(src: string, tags: string, term: string, favorites: Reco
         const firstPart = dashSplit[0];
         if (firstPart.length !== 5) return false;
         const secondPart = dashSplit[1];
-        if (secondPart.length !== 10) return false;
+        if (secondPart.length !== 10 && secondPart.length !== 9 && secondPart.length !== 8) return false;
+        console.log("AI found for src: ", src);
         return true
     }
 
