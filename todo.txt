@@ -1,5 +1,4 @@
 Todo:
-- add batch tagging
 - add autotagger
 - recent search menu
 

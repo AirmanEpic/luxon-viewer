@@ -113,12 +113,21 @@ export async function importLegacyTagFile(filePath: string): Promise<void> {
 
 export type Config = {
 	imageFolder: string;
+	autotaggerLocation: string;
 }
 
 export async function createOrLoadConfig(): Promise<Config> {
 	//creates a new config file or loads the existing one
-	const defaultConfig: Config = { imageFolder: "" };
-	return createOrReadFile("config.json", defaultConfig);
+	const defaultConfig: Config = { imageFolder: "", autotaggerLocation: "" };
+	const config = await createOrReadFile<Partial<Config>>("config.json", defaultConfig);
+	return { ...defaultConfig, ...config };
+}
+
+export async function targetAutotaggerLocation(location: string): Promise<void> {
+	//sets the target autotagger location for the application
+	const config = await createOrLoadConfig();
+	config.autotaggerLocation = location;
+	await writeFile("config.json", config);
 }
 
 export async function getLastViewedSet(): Promise<Record<string, number>> {

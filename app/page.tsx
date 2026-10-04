@@ -15,7 +15,7 @@ import {
 import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { createOrLoadConfig, createOrLoadTagDatabase, getRecentItems, processImageDB, processLegacyImageDB, saveFavoriteStatus, saveImageTags, targetImageFolder, viewImage, wipeFavorites } from "@/components/server/imagedb";
+import { createOrLoadConfig, createOrLoadTagDatabase, getRecentItems, processImageDB, processLegacyImageDB, saveFavoriteStatus, saveImageTags, targetAutotaggerLocation, targetImageFolder, viewImage, wipeFavorites } from "@/components/server/imagedb";
 import { getMatchingImages } from "@/components/server/search";
 import { HelpModal } from "@/components/ui/helpModal";
 import { ModalBack } from "@/components/ui/modal";
@@ -364,6 +364,18 @@ export default function Index() {
 									className="mt-3 w-full"
 								>
 									Load legacy Img DB
+								</Button>
+								<Button
+									variant="glass"
+									onClick={async ()=>{
+										const folder = await handleOpenFile([{extensions: ["exe"] }]);
+										if (folder) {
+											await targetAutotaggerLocation(folder);
+										}
+									}}
+									className="mt-3 w-full"
+								>
+									Locate autotagger executable
 								</Button>
 							</div>
 						)}
