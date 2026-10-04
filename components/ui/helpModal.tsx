@@ -21,6 +21,8 @@ export function HelpModal(props: { setHelpModalOpen: (open: boolean) => void }){
 			<p><strong>special:notag</strong> - Filters images that do not have any tags.</p>
 			<p><strong>special:tagged</strong> - Filters images that are marked as tagged.</p>
 			<p><strong>special:any</strong> - returns ALL images. Useful for quickly viewing the entire image collection.</p>
+			<p><strong>special:image</strong> - returns only image files in the list (e.g., jpg, png, etc.).</p>
+			<p><strong>special:notimage</strong> - returns files in the list that aren't images - eg gif, mp4, etc.</p>
 			<p>You may also prefix special functions with | to indicate an "Or" condition. Ex: <strong> solo |special:notag</strong></p>
 			<p>The keyword <strong>limit:</strong> can be used to restrict the number of search results returned. For example, <strong>limit:10</strong> will return only the first 10 matching images.</p>
 		</div>

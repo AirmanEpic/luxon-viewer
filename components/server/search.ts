@@ -87,6 +87,8 @@ export async function getMatchingImages(query:string, aliasStrength:number, favo
     return matchingImages.map(([src, item]) => ({ ...item })); // Convert to ImageItem objects assuming ImageItem has key and image properties
 }
 
+const safeImageExts = ["jpg", "jpeg", "png", "bmp", "webp", "tiff"];
+
 function matchAlgorithm(src: string, tags: string, term: string, favorites: Record<string, boolean>): boolean {
     if (term.startsWith('folder:') && !term.startsWith('folder:"')){
         const folderName = term.slice('folder:'.length);
@@ -130,6 +132,16 @@ function matchAlgorithm(src: string, tags: string, term: string, favorites: Reco
         if (secondPart.length !== 10 && secondPart.length !== 9 && secondPart.length !== 8) return false;
         console.log("AI found for src: ", src);
         return true
+    }
+
+    if (term === "special:image") {
+        const ext = src.split(".").pop()?.toLowerCase() ?? "";
+        return safeImageExts.includes(ext);
+    }
+
+    if (term === "special:notimage") {
+        const ext = src.split(".").pop()?.toLowerCase() ?? "";
+        return !safeImageExts.includes(ext);
     }
 
     // Default behavior: check if the term exists as a tag in the key

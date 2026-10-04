@@ -227,3 +227,14 @@ export async function wipeFavorites(){
 export async function saveFavoriteStatus(favorites: Record<string, boolean>) {
 	await writeFile("favorites.json", JSON.stringify(favorites, null, 2));
 }
+
+export async function getUpdatedImageTagsForImages(imagePaths: string[]): Promise<Record<string, string[]>> {
+	const currentImageDB = await getImageDatabase();
+	const updatedTags: Record<string, string[]> = {};
+	for (const path of imagePaths) {
+		if (currentImageDB[path]) {
+			updatedTags[path] = currentImageDB[path].tags;
+		}
+	}
+	return updatedTags;
+}

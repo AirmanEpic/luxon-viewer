@@ -84,7 +84,9 @@ export function BatchTagInterface(
 				<h3>Selection ({selectedImages.length} items)</h3>
 				<ul className="max-h-40 overflow-y-auto">
 					{selectedImages.map((item) => (
-						<li className="flex items-center" key={item.src}>{item.src} {
+						<li className="flex items-center" key={item.src}>
+                            <p className={"w-3/4"}>{item.src} </p>
+                            {
                             item.processed === null ? <></> 
                                 : item.processed ? <LuCheck className="ml-2 text-green-500" /> 
                                     : <LuX className="ml-2 text-red-500" />

@@ -15,7 +15,7 @@ import {
 import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { createOrLoadConfig, createOrLoadTagDatabase, getRecentItems, processImageDB, processLegacyImageDB, saveFavoriteStatus, saveImageTags, setAutotaggerPort, targetAutotaggerLocation, targetImageFolder, viewImage, wipeFavorites } from "@/components/server/imagedb";
+import { createOrLoadConfig, createOrLoadTagDatabase, getRecentItems, getUpdatedImageTagsForImages, processImageDB, processLegacyImageDB, saveFavoriteStatus, saveImageTags, setAutotaggerPort, targetAutotaggerLocation, targetImageFolder, viewImage, wipeFavorites } from "@/components/server/imagedb";
 import { getMatchingImages } from "@/components/server/search";
 import { HelpModal } from "@/components/ui/helpModal";
 import { ModalBack } from "@/components/ui/modal";
@@ -194,6 +194,23 @@ export default function Index() {
 
 	const currentImage = images[imageIndex] ?? images[0];
 
+	const closeBatchInterface = async () => {
+		setBatchTagInterfaceOpen(null);
+		//reprocess the image db
+		await processImageDB();
+
+		//update the displayed images without resubmitting the search, as autotagging invalidates it
+		const updatedTags = await getUpdatedImageTagsForImages(images.map(image => image.src));
+		setImages(prevImages => prevImages.map(image => ({
+			...image,
+			tags: updatedTags[image.src] ?? image.tags
+		})));
+
+		if (currentImage) {
+			setCurrentTags(updatedTags[currentImage.src] ?? currentImage.tags);
+		}
+	};
+
 	return (
 		
 		<div className="flex h-screen min-h-[640px] w-full flex-col overflow-hidden bg-background text-foreground antialiased">
@@ -207,12 +224,8 @@ export default function Index() {
 				</ModalBack>
 			)}
 			{batchTagInterfaceOpen && (
-				<ModalBack onClose={async () => {
-					setBatchTagInterfaceOpen(null)
-					//re-get the image database to reflect any changes made in the batch tag interface
-					await submitSearch(query);
-				}}>
-					<BatchTagInterface type={batchTagInterfaceOpen} onClose={() => setBatchTagInterfaceOpen(null)} tags={batchTags} selection={images} />
+				<ModalBack onClose={closeBatchInterface}>
+					<BatchTagInterface type={batchTagInterfaceOpen} onClose={closeBatchInterface} tags={batchTags} selection={images} />
 				</ModalBack>
 			)}
 			<header className="specular relative z-30 shrink-0 border-b border-border/70 bg-surface/95">
@@ -303,7 +316,7 @@ export default function Index() {
 									<button
 										key={item.query}
 										onClick={() => {
-													submitSearch(item.query);
+											submitSearch(item.query);
 											setRecentOpen(false);
 										}}
 										className="block w-full rounded-md px-3 py-2 text-left text-xs hover:bg-overlay"
