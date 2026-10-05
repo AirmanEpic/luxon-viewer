@@ -4,4 +4,4 @@ Todo:
 
 
 Bugs:
-- on search/initial render from search, star isn't rendered
+- current images are saved by the save image system, not starred images

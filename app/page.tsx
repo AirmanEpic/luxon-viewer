@@ -22,6 +22,7 @@ import { ModalBack } from "@/components/ui/modal";
 import { handleOpenFolder } from "@/components/Tauri/handleOpenFolder";
 import { handleOpenFile } from "@/components/Tauri/handleOpenFile";
 import { BatchTagInterface } from "@/components/ui/batchTaggerInterface";
+import { bulkSave } from "@/components/server/bulk_save";
 
 export function TagPill({ tag, removable, onRemove }: { tag: Tag; removable?: boolean; onRemove?: () => void }) {
 	return (
@@ -361,7 +362,23 @@ export default function Index() {
 									<input type="checkbox" defaultChecked className="accent-primary" />
 								</label>
 								<Button
-									variant="glass"
+									variant="secondary"
+									onClick={async ()=>{
+										const folder = await handleOpenFolder();
+										if (folder) {
+											if (isTauri()) {
+												await invoke("allow_image_directory", { path: folder });
+											}
+											const filepaths = images.map(img => img.src);
+											bulkSave(filepaths, folder);
+										}
+									}}
+									className="mt-3 w-full"
+								>
+									Save starred images
+								</Button>
+								<Button
+									variant="destructive"
 									onClick={async ()=>{
 										const folder = await handleOpenFolder();
 										if (folder) {
@@ -395,7 +412,7 @@ export default function Index() {
 								</Button>
 								<div className="flex justify-between">
 									<Button
-										variant="glass"
+										variant="ghost"
 										onClick={async ()=>{
 											const folder = await handleOpenFile([{extensions: ["exe"] }]);
 											if (folder) {
@@ -408,7 +425,7 @@ export default function Index() {
 										Locate autotagger executable
 									</Button>
 									<Button
-										variant="glass"
+										variant="ghost"
 										onClick={async ()=>{
 											//pop up a message asking for the autotagger port
 											const port = prompt("Enter the autotagger service port:");
