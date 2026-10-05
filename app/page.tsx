@@ -291,12 +291,13 @@ export default function Index() {
 									id="alias"
 									type="range"
 									min="0"
-									max="100"
+									step="0.01"
+									max="0.21"
 									value={aliasStrength}
 									onChange={(event) => setAliasStrength(Number(event.target.value))}
 									className="h-1 w-20 accent-primary"
 								/>
-								<span className="w-7 text-right font-mono text-[10px] text-primary">{aliasStrength}%</span>
+								<span className="w-7 text-right font-mono text-[10px] text-primary">{(aliasStrength * 100).toFixed(0)}%</span>
 							</div>
 						</div>
 						<div className="scrollbar-thin mt-2 flex items-center gap-2 overflow-x-auto pb-1">

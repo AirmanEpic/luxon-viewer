@@ -5,6 +5,7 @@ import { hslToRgb } from "@/lib/utils";
 import { createOrReadFile, writeFile } from "./fileHandling";
 import fs from "fs/promises";
 import { existsSync } from "fs";
+import { generateAliasFile } from "./aliaser";
 
 export async function createOrLoadTagDatabase(): Promise<Tag[]> {
 	//gets all tags from the database and converts them to Tag objects
@@ -88,16 +89,29 @@ export async function processImageDB(): Promise<void> {
 	//get current tag DB
 	const currentTagDB = await createOrLoadTagDatabase();
 	const newTags = Array.from(tags).filter(tag => !currentTagDB.some(t => t.name === tag));
-	if (newTags.length > 0) {
+	const knownTags = Array.from(tags).filter(tag => currentTagDB.some(t => t.name === tag));
 
-		const updatedTagDB = [...currentTagDB, ...newTags.map(tag => { 
+	if (newTags.length > 0) {
+		currentTagDB.push(...newTags.map(tag => { 
 			const hsl = {h: Math.random()*360, s:80, l:70}
 			const [r, g, b] = hslToRgb(hsl.h, hsl.s, hsl.l);
 			const hexVal = rgbToHex(r, g, b);
 			return { name: tag, color: hexVal, count: counts[tag] ?? 0 };
-		})];
-		await saveTagDatabase(updatedTagDB);
+		}));
 	}
+
+	//update counts for known tags
+	for (const tag of knownTags) {
+		const tagEntry = currentTagDB.find(t => t.name === tag);
+		if (tagEntry) {
+			tagEntry.count = counts[tag] ?? 0;
+		}
+	}
+
+	//create aliases
+	await generateAliasFile();
+
+	await saveTagDatabase(currentTagDB);
 }
 
 export async function targetImageFolder(folderPath: string): Promise<void> {

@@ -1,6 +1,6 @@
 Todo:
-- add autotagger
 - recent search menu
+
 
 
 Bugs:

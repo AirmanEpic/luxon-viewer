@@ -1,6 +1,7 @@
 "use server"
 
 import { getImageDatabase, getLastViewedSet } from "./imagedb";
+import { Alias, loadAliases } from "./aliaser";
 import fs from "fs";
 
 const sortResults = async (images: [string, ImageItem][], method: string, lastViewedSet: Record<string, number>): Promise<CompleteImageItem[]> => {
@@ -26,6 +27,7 @@ export async function getMatchingImages(query:string, aliasStrength:number, favo
     //gets all images from the DB matching the query
     const imageDB = await getImageDatabase();
     const lastViewedSet = await getLastViewedSet();
+    const aliases = await loadAliases();
     //query is a space-separated list of tags to filter images by (and other special tokens)
     const searchTerms = query.split(" ").map((term) => term.trim()).filter(Boolean);
 
@@ -50,14 +52,14 @@ export async function getMatchingImages(query:string, aliasStrength:number, favo
 
         //if orTerm is true, rebuild the whole matchingImages array and add any images that match the workingTerm
         if (orTerm) {
-            const additionalMatches = Object.entries(imageDB).filter(([src, item]) => matchAlgorithm(src, item.tags.join(" "), workingTerm, favorites));
+            const additionalMatches = Object.entries(imageDB).filter(([src, item]) => matchAlgorithm(src, item.tags.join(" "), workingTerm, favorites, aliasStrength, aliases));
             matchingImages = [...matchingImages, ...additionalMatches];
         } else {
             if (!notTerm) {
                 console.log("Filtering with term: ", workingTerm);
-                matchingImages = matchingImages.filter(([src, item]) => matchAlgorithm(src, item.tags.join(" "), workingTerm, favorites));
+                matchingImages = matchingImages.filter(([src, item]) => matchAlgorithm(src, item.tags.join(" "), workingTerm, favorites, aliasStrength, aliases));
             } else {
-                matchingImages = matchingImages.filter(([src, item]) => !matchAlgorithm(src, item.tags.join(" "), workingTerm, favorites));
+                matchingImages = matchingImages.filter(([src, item]) => !matchAlgorithm(src, item.tags.join(" "), workingTerm, favorites, aliasStrength, aliases));
             }
         }
     });
@@ -89,7 +91,7 @@ export async function getMatchingImages(query:string, aliasStrength:number, favo
 
 const safeImageExts = ["jpg", "jpeg", "png", "bmp", "webp", "tiff"];
 
-function matchAlgorithm(src: string, tags: string, term: string, favorites: Record<string, boolean>): boolean {
+function matchAlgorithm(src: string, tags: string, term: string, favorites: Record<string, boolean>, aliasRadius: number, aliases: Record<string, Alias[]>): boolean {
     if (term.startsWith('folder:') && !term.startsWith('folder:"')){
         const folderName = term.slice('folder:'.length);
         return src.includes(folderName);
@@ -147,6 +149,14 @@ function matchAlgorithm(src: string, tags: string, term: string, favorites: Reco
     // Default behavior: check if the term exists as a tag in the key
     if (tags.split(" ").includes(term)) {
         return true;
+    }
+
+    const termAliases = aliases[term] ?? [];
+    if (termAliases.some(alias => alias.distance <= aliasRadius)) {
+        //see if any of the aliases match the tags in the image
+        const matchingAliases = termAliases.filter(alias => alias.distance <= aliasRadius);
+        const matchingTags = tags.split(" ").filter(tag => matchingAliases.some(alias => alias.name === tag));
+        return matchingTags.length > 0;
     }
 
     return false;
